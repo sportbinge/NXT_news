@@ -10,11 +10,11 @@ Secrets (bot token etc.) are NOT stored here. They go in Railway > Variables.
 import os
 
 # ---------------------------------------------------------------- secrets / env
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip().strip("\"'").strip()
 # Your own Telegram user id (the bot sends review cards + admin messages here)
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID", "").strip()
 # The public channel your audience follows, e.g. @nxt_esports or -1001234567890
-CHANNEL_ID = os.getenv("CHANNEL_ID", "").strip()
+CHANNEL_ID = os.getenv("CHANNEL_ID", "").strip().strip("\"'").strip()
 # Optional - free key from pandascore.co, turns on live match / result alerts
 PANDASCORE_TOKEN = os.getenv("PANDASCORE_TOKEN", "").strip()
 # Where the bot keeps its memory. On Railway attach a Volume at /data and set DATA_DIR=/data

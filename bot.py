@@ -319,8 +319,14 @@ def poll_updates():
             updates = tg.call("getUpdates", _timeout=60, offset=offset, timeout=45,
                               allowed_updates=["message", "callback_query"])
         except Exception as e:
-            LOG("getUpdates error:", e)
-            time.sleep(5)
+            if "Conflict" in str(e):
+                LOG("CONFLICT: another program is running with this same BOT_TOKEN "
+                    "(e.g. the Sports Binge bot, an old Railway service, or your laptop). "
+                    "Each bot needs its own token from @BotFather.")
+                time.sleep(30)
+            else:
+                LOG("getUpdates error:", e)
+                time.sleep(5)
             continue
         for u in updates:
             offset = u["update_id"] + 1
@@ -340,10 +346,41 @@ def poll_updates():
 
 
 def main():
+    # Startup check - shows which settings Railway is giving the bot (values hidden)
+    def shown(name, val):
+        return f"{name}={'SET (' + str(len(val)) + ' chars)' if val else 'MISSING'}"
+    print("SETTINGS:", shown("BOT_TOKEN", config.BOT_TOKEN), shown("CHANNEL_ID", config.CHANNEL_ID),
+          shown("ADMIN_CHAT_ID", config.ADMIN_CHAT_ID), shown("PANDASCORE_TOKEN", config.PANDASCORE_TOKEN),
+          f"DATA_DIR={config.DATA_DIR}", flush=True)
+    import os
+    similar = [k for k in os.environ if "TOKEN" in k.upper() and k != "BOT_TOKEN"
+               and k != "PANDASCORE_TOKEN"]
+    if similar:
+        print("NOTE: found variables with similar names:", similar,
+              "- the bot only reads one named exactly BOT_TOKEN", flush=True)
     if not config.BOT_TOKEN:
-        print("BOT_TOKEN is missing. Add it in Railway → your service → Variables.")
+        print("STOP: BOT_TOKEN is missing. Railway -> click the bot service -> Variables -> "
+              "add BOT_TOKEN -> click Deploy in the purple bar.", flush=True)
+        time.sleep(300)   # wait instead of crash-looping so the logs stay readable
         sys.exit(1)
-    me = tg.call("getMe")
+    if ":" not in config.BOT_TOKEN or " " in config.BOT_TOKEN:
+        print("STOP: BOT_TOKEN doesn't look like a BotFather token (should be like 123456789:ABC...). "
+              "Re-copy it from @BotFather -> /mybots -> your bot -> API Token.", flush=True)
+        time.sleep(300)
+        sys.exit(1)
+    try:
+        me = tg.call("getMe")
+    except Exception as e:
+        print(f"STOP: Telegram rejected the token ({e}). Re-copy it from @BotFather -> /mybots -> "
+              "API Token. If you pressed 'Revoke', the old token no longer works.", flush=True)
+        time.sleep(300)
+        sys.exit(1)
+    try:
+        os.makedirs(config.DATA_DIR, exist_ok=True)
+        open(os.path.join(config.DATA_DIR, ".write_test"), "w").close()
+    except OSError as e:
+        print(f"WARNING: can't write to DATA_DIR {config.DATA_DIR} ({e}). "
+              "Check the Volume mount path is /data.", flush=True)
     LOG(f"running as @{me['username']} · mode={state['mode']} · data={config.DATA_DIR}")
     tg.call("deleteWebhook")
     threading.Thread(target=worker, daemon=True).start()
